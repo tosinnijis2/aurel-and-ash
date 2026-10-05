@@ -6,19 +6,18 @@ import { PrismaClient } from "@prisma/client";
  *
  * Small on purpose. `pg` opens ten connections per pool by default, and the
  * total is (number of clients x this number): every build worker and every
- * serverless instance gets its own. Prerendering a build with a dozen workers
- * at the default therefore asks a hosted PostgreSQL for well over the hundred
- * connections it is allowed, and the build dies on "Server has closed the
- * connection" partway through generating pages.
+ * serverless instance gets its own. Prerendering a build with a dozen workers at
+ * a large per-client pool therefore asks a hosted PostgreSQL for far more
+ * connections than a small database will hand out, and the build dies on
+ * "Server has closed the connection" partway through generating pages.
  *
- * Override with DATABASE_POOL_SIZE against a database with a tighter ceiling —
- * notably the embedded `prisma dev` server, which tolerates only about ten
- * concurrent connections and starts terminating them under build load. It is
- * not a setting production needs; leave it unset there.
+ * Override with DATABASE_POOL_SIZE against a database with a different ceiling.
+ * The default stays conservative for Prisma Postgres and serverless hosts,
+ * where the provider counts every connection across all instances.
  */
 const POOL_SIZE = (() => {
   const configured = Number.parseInt(process.env.DATABASE_POOL_SIZE ?? "", 10);
-  return Number.isInteger(configured) && configured > 0 ? configured : 5;
+  return Number.isInteger(configured) && configured > 0 ? configured : 2;
 })();
 
 /**
