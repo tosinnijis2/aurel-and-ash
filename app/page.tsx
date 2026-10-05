@@ -12,11 +12,11 @@ import { getFeaturedProducts, getMerchandisedProducts, getRestOfTheLine } from "
  * server component with no data access of its own, so what each one renders is
  * decided in one place instead of scattered across the component tree.
  *
- * Revalidated rather than frozen: the assortment changes on the order of a
- * season, but stock and prices should not sit stale for the length of a
- * deployment.
+ * Dynamic rather than frozen: Vercel's build environment does not need to open
+ * database TCP connections while compiling the app. The request runtime reads
+ * the catalogue when the page is served.
  */
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const [slots, featured, rest] = await Promise.all([

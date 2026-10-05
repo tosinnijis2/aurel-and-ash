@@ -9,21 +9,15 @@ import { ProductDetail } from "@/components/product/product-detail";
 import { ProductGrid } from "@/components/product/product-grid";
 import { formatPrice } from "@/lib/format";
 import { CATEGORY_LABELS } from "@/lib/products";
-import { getAllProductSlugs, getProductBySlug, getRelatedProducts } from "@/lib/catalogue";
+import { getProductBySlug, getRelatedProducts } from "@/lib/catalogue";
 
 type ProductParams = Promise<{ slug: string }>;
 
 /**
- * Known products are prerendered, and revalidated every minute so a stock count
- * is never more than a minute stale. An unknown slug is not in the params, so
- * it renders on demand and hits the `notFound()` below.
+ * Product pages are resolved at request time so the Vercel build does not need
+ * to query the catalogue database while collecting static params.
  */
-export const revalidate = 60;
-
-export async function generateStaticParams() {
-  const slugs = await getAllProductSlugs();
-  return slugs.map((slug) => ({ slug }));
-}
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: ProductParams }): Promise<Metadata> {
   const { slug } = await params;
