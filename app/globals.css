@@ -1,0 +1,181 @@
+@import "tailwindcss";
+
+@theme {
+  /* Neutral warm palette. Ink on bone, low chroma, nothing that competes with product. */
+  --color-ink: #121110;
+  --color-ink-soft: #4a4741;
+  --color-ash: #6e6a63;
+  --color-stone: #d5cfc5;
+  --color-sand: #eae5db;
+  --color-bone: #f6f3ee;
+  --color-bone-deep: #ece7de;
+  --color-paper: #ffffff;
+  /* Brass is the only chroma in the system and is rationed deliberately. */
+  --color-brass: #8a6d33;
+  --color-brass-ink: #6b521f;
+  /* Reserved for validation errors so they never borrow the accent colour. */
+  --color-clay: #8a3a2b;
+
+  --font-display: var(--font-inter-tight), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-sans: var(--font-inter-tight), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-serif: var(--font-instrument-serif), ui-serif, Georgia, Cambria, serif;
+
+  --ease-editorial: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--color-bone);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-feature-settings: "kern", "liga", "cv11";
+  }
+
+  ::selection {
+    background-color: var(--color-ink);
+    color: var(--color-bone);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-ink);
+    outline-offset: 3px;
+    border-radius: 1px;
+  }
+
+  /* Reserve the scrollbar so overlay menus do not shift the layout. */
+  html {
+    scrollbar-gutter: stable;
+  }
+}
+
+@layer components {
+  /* Page gutter rhythm. Mobile keeps a 20px margin, desktop opens to 64px. */
+  .gutter {
+    padding-inline: 1.25rem;
+  }
+
+  @media (min-width: 640px) {
+    .gutter {
+      padding-inline: 2rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .gutter {
+      padding-inline: 3rem;
+    }
+  }
+
+  /* Halftone dot field used on media panels to read as printed stock. */
+  .grain::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(rgba(18, 17, 16, 0.07) 0.5px, transparent 0.5px);
+    background-size: 3px 3px;
+    pointer-events: none;
+  }
+
+  /* Underline that wipes in from the left on hover. */
+  .underline-sweep {
+    position: relative;
+    display: inline-block;
+  }
+
+  .underline-sweep::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: -2px;
+    height: 1px;
+    width: 100%;
+    background-color: currentColor;
+    transform: scaleX(0);
+    transform-origin: right;
+    transition: transform 420ms var(--ease-editorial);
+  }
+
+  .underline-sweep:hover::after,
+  .underline-sweep:focus-visible::after {
+    transform: scaleX(1);
+    transform-origin: left;
+  }
+}
+
+@layer utilities {
+  .marquee-track {
+    animation: aa-marquee 42s linear infinite;
+  }
+
+  @keyframes aa-marquee {
+    from {
+      transform: translate3d(0, 0, 0);
+    }
+    to {
+      transform: translate3d(-50%, 0, 0);
+    }
+  }
+
+  .menu-item {
+    animation: aa-menu-in 520ms var(--ease-editorial) both;
+  }
+
+  @keyframes aa-menu-in {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 14px, 0);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  /* Scroll reveal. Opt-in via the `js` class so no-JS visitors still see content. */
+  html.js .reveal {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0);
+    transition:
+      opacity 780ms var(--ease-editorial),
+      transform 780ms var(--ease-editorial);
+  }
+
+  html.js .reveal.is-visible {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  html.js .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .marquee-track {
+    animation: none;
+  }
+
+  .underline-sweep::after {
+    transition: none;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
