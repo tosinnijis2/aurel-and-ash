@@ -37,10 +37,29 @@ export function createPrismaClient(): PrismaClient {
     );
   }
 
+  const normalizedConnectionString = normalizePostgresConnectionString(connectionString);
+
   // Prisma's query compiler reaches Postgres through the driver adapter rather
   // than its own binary protocol client, which is what lets the same code run
   // on a Node server, on Vercel functions and at build time during prerendering.
   return new PrismaClient({
-    adapter: new PrismaPg({ connectionString, max: POOL_SIZE }),
+    adapter: new PrismaPg({ connectionString: normalizedConnectionString, max: POOL_SIZE }),
   });
+}
+
+function normalizePostgresConnectionString(connectionString: string): string {
+  const url = new URL(connectionString);
+
+  if (!["postgres:", "postgresql:"].includes(url.protocol)) {
+    return connectionString;
+  }
+
+  const sslMode = url.searchParams.get("sslmode");
+
+  if (sslMode && ["prefer", "require", "verify-ca"].includes(sslMode)) {
+    url.searchParams.set("sslmode", "verify-full");
+    return url.toString();
+  }
+
+  return connectionString;
 }
