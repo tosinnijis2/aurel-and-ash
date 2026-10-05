@@ -8,17 +8,26 @@ import { ProductGallery } from "@/components/product/product-gallery";
 import { ProductDetail } from "@/components/product/product-detail";
 import { ProductGrid } from "@/components/product/product-grid";
 import { formatPrice } from "@/lib/format";
-import { CATEGORY_LABELS, PRODUCTS, getProductBySlug, getRelatedProducts } from "@/lib/products";
+import { CATEGORY_LABELS } from "@/lib/products";
+import { getAllProductSlugs, getProductBySlug, getRelatedProducts } from "@/lib/catalogue";
 
 type ProductParams = Promise<{ slug: string }>;
 
-export function generateStaticParams() {
-  return PRODUCTS.map((product) => ({ slug: product.slug }));
+/**
+ * Known products are prerendered, and revalidated every minute so a stock count
+ * is never more than a minute stale. An unknown slug is not in the params, so
+ * it renders on demand and hits the `notFound()` below.
+ */
+export const revalidate = 60;
+
+export async function generateStaticParams() {
+  const slugs = await getAllProductSlugs();
+  return slugs.map((slug) => ({ slug }));
 }
 
 export async function generateMetadata({ params }: { params: ProductParams }): Promise<Metadata> {
   const { slug } = await params;
-  const product = getProductBySlug(slug);
+  const product = await getProductBySlug(slug);
 
   if (!product) return { title: "Product not found" };
 
@@ -40,11 +49,11 @@ export async function generateMetadata({ params }: { params: ProductParams }): P
 
 export default async function ProductPage({ params }: { params: ProductParams }) {
   const { slug } = await params;
-  const product = getProductBySlug(slug);
+  const product = await getProductBySlug(slug);
 
   if (!product) notFound();
 
-  const related = getRelatedProducts(product, 3);
+  const related = await getRelatedProducts(product, 3);
 
   return (
     <div className="pb-24">

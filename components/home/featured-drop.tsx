@@ -4,9 +4,9 @@ import { SectionHeading } from "@/components/ui/section-heading";
 import { TextLink } from "@/components/ui/button";
 import { ArrowRight } from "@/components/ui/icons";
 import { ProductGrid } from "@/components/product/product-grid";
-import { getFeaturedProducts } from "@/lib/products";
+import type { Product } from "@/lib/products";
 
-export function FeaturedDrop() {
+export function FeaturedDrop({ products }: { products: readonly Product[] }) {
   return (
     <section className="border-b border-stone py-20 lg:py-28">
       <Container width="wide">
@@ -23,7 +23,7 @@ export function FeaturedDrop() {
         </Reveal>
 
         <Reveal delay={90} className="mt-12 lg:mt-16">
-          <ProductGrid products={getFeaturedProducts()} columns={3} />
+          <ProductGrid products={products} columns={3} />
         </Reveal>
       </Container>
     </section>

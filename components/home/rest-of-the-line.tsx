@@ -4,12 +4,10 @@ import { SectionHeading } from "@/components/ui/section-heading";
 import { TextLink } from "@/components/ui/button";
 import { ArrowRight } from "@/components/ui/icons";
 import { ProductGrid } from "@/components/product/product-grid";
-import { PRODUCTS } from "@/lib/products";
+import type { Product } from "@/lib/products";
 
-/** The two pieces the featured drop leaves out, shown at a larger scale. */
-const REST = [PRODUCTS[0], PRODUCTS[4]];
-
-export function RestOfTheLine() {
+/** The pieces the featured drop leaves out, shown at a larger scale. */
+export function RestOfTheLine({ products }: { products: readonly Product[] }) {
   return (
     <section className="border-b border-stone py-20 lg:py-28">
       <Container width="wide">
@@ -26,7 +24,7 @@ export function RestOfTheLine() {
         </Reveal>
 
         <Reveal delay={90} className="mt-12 lg:mt-16">
-          <ProductGrid products={REST} columns={2} />
+          <ProductGrid products={products} columns={2} />
         </Reveal>
       </Container>
     </section>

@@ -2,12 +2,17 @@ import { ButtonLink } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { ArrowRight } from "@/components/ui/icons";
 import { ProductArt } from "@/components/product/product-art";
-import { PRODUCTS } from "@/lib/products";
+import type { Product } from "@/lib/products";
 
-const HERO_PRODUCT = PRODUCTS[1];
-const DETAIL_PRODUCT = PRODUCTS[3];
-
-export function Hero() {
+/**
+ * Which product occupies each slot is an editorial decision made by the page,
+ * which loads them by slug. The section stays presentational and has no opinion
+ * about the catalogue.
+ *
+ * The slots are optional so that a product which is not yet published removes
+ * its artwork rather than crashing the homepage.
+ */
+export function Hero({ feature, inset }: { feature?: Product; inset?: Product }) {
   return (
     <section className="border-b border-stone">
       <Container width="wide" className="grid items-center gap-12 py-14 lg:grid-cols-[1.05fr_0.95fr] lg:gap-20 lg:py-24">
@@ -51,29 +56,33 @@ export function Hero() {
           </dl>
         </div>
 
-        <div className="relative mx-auto w-full max-w-[520px] lg:max-w-none">
-          <div className="grain relative aspect-[4/5] overflow-hidden">
-            <ProductArt
-              silhouette={HERO_PRODUCT.silhouette}
-              tone={HERO_PRODUCT.views[0].tone}
-              className="absolute inset-0 h-full w-full"
-            />
-          </div>
-
-          <div className="absolute right-5 bottom-5 w-[38%] min-w-[120px] border border-bone bg-bone shadow-[0_18px_40px_-24px_rgba(18,17,16,0.45)]">
-            <div className="grain relative aspect-square">
+        {feature ? (
+          <div className="relative mx-auto w-full max-w-[520px] lg:max-w-none">
+            <div className="grain relative aspect-[4/5] overflow-hidden">
               <ProductArt
-                silhouette={DETAIL_PRODUCT.silhouette}
-                tone={DETAIL_PRODUCT.views[1].tone}
-                view="detail"
+                silhouette={feature.silhouette}
+                tone={feature.views[0].tone}
                 className="absolute inset-0 h-full w-full"
               />
             </div>
-            <p className="bg-bone px-3 py-2 text-[9px] tracking-[0.18em] text-ink-soft uppercase">
-              {DETAIL_PRODUCT.name}
-            </p>
+
+            {inset ? (
+              <div className="absolute right-5 bottom-5 w-[38%] min-w-[120px] border border-bone bg-bone shadow-[0_18px_40px_-24px_rgba(18,17,16,0.45)]">
+                <div className="grain relative aspect-square">
+                  <ProductArt
+                    silhouette={inset.silhouette}
+                    tone={inset.views[1].tone}
+                    view="detail"
+                    className="absolute inset-0 h-full w-full"
+                  />
+                </div>
+                <p className="bg-bone px-3 py-2 text-[9px] tracking-[0.18em] text-ink-soft uppercase">
+                  {inset.name}
+                </p>
+              </div>
+            ) : null}
           </div>
-        </div>
+        ) : null}
       </Container>
     </section>
   );

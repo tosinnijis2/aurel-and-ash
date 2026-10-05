@@ -1,14 +1,16 @@
 import type { MetadataRoute } from "next";
-import { PRODUCTS } from "@/lib/products";
+import { getAllProductSlugs } from "@/lib/catalogue";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://aurel-and-ash.vercel.app";
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const slugs = await getAllProductSlugs();
+
   return [
     { url: siteUrl, changeFrequency: "weekly", priority: 1 },
     { url: `${siteUrl}/shop`, changeFrequency: "weekly", priority: 0.9 },
-    ...PRODUCTS.map((product) => ({
-      url: `${siteUrl}/products/${product.slug}`,
+    ...slugs.map((slug) => ({
+      url: `${siteUrl}/products/${slug}`,
       changeFrequency: "monthly" as const,
       priority: 0.7,
     })),

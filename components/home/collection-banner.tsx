@@ -3,22 +3,22 @@ import { Reveal } from "@/components/ui/reveal";
 import { ButtonLink } from "@/components/ui/button";
 import { ArrowRight } from "@/components/ui/icons";
 import { ProductArt } from "@/components/product/product-art";
-import { PRODUCTS } from "@/lib/products";
+import type { Product } from "@/lib/products";
 
-const FEATURE = PRODUCTS[0];
-
-export function CollectionBanner() {
+export function CollectionBanner({ product }: { product?: Product }) {
   return (
     <section className="relative overflow-hidden bg-ink text-bone">
       {/* Art sits behind the copy at low contrast so the type stays dominant. */}
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0 opacity-[0.13]">
-        <ProductArt
-          silhouette={FEATURE.silhouette}
-          tone="chalk"
-          view="detail"
-          className="h-full w-full object-cover"
-        />
-      </div>
+      {product ? (
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 opacity-[0.13]">
+          <ProductArt
+            silhouette={product.silhouette}
+            tone="chalk"
+            view="detail"
+            className="h-full w-full object-cover"
+          />
+        </div>
+      ) : null}
 
       <Container width="wide" className="relative py-24 lg:py-36">
         <Reveal>

@@ -2,9 +2,7 @@ import { Container } from "@/components/ui/container";
 import { Reveal } from "@/components/ui/reveal";
 import { ButtonLink } from "@/components/ui/button";
 import { ProductArt } from "@/components/product/product-art";
-import { PRODUCTS } from "@/lib/products";
-
-const SUBJECT = PRODUCTS[4];
+import type { Product } from "@/lib/products";
 
 const PRINCIPLES = [
   ["Fabric first", "Weight and hand-feel decide everything. GSM is quoted on every product page."],
@@ -12,23 +10,25 @@ const PRINCIPLES = [
   ["Built to repair", "Seams are left accessible, so a worn cuff is a reknit rather than a replacement."],
 ] as const;
 
-export function Editorial() {
+export function Editorial({ product }: { product?: Product }) {
   return (
     <section id="editorial" className="scroll-mt-24 border-b border-stone bg-bone-deep py-20 lg:py-28">
       <Container width="wide">
         <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-20">
-          <Reveal>
-            <div className="grain relative aspect-[5/6] overflow-hidden">
-              <ProductArt
-                silhouette={SUBJECT.silhouette}
-                tone={SUBJECT.views[0].tone}
-                className="absolute inset-0 h-full w-full"
-              />
-            </div>
-            <p className="mt-4 text-[11px] tracking-[0.2em] text-ash uppercase">
-              {SUBJECT.name} — {SUBJECT.tagline}
-            </p>
-          </Reveal>
+          {product ? (
+            <Reveal>
+              <div className="grain relative aspect-[5/6] overflow-hidden">
+                <ProductArt
+                  silhouette={product.silhouette}
+                  tone={product.views[0].tone}
+                  className="absolute inset-0 h-full w-full"
+                />
+              </div>
+              <p className="mt-4 text-[11px] tracking-[0.2em] text-ash uppercase">
+                {product.name} — {product.tagline}
+              </p>
+            </Reveal>
+          ) : null}
 
           <Reveal delay={90}>
             <p className="text-[11px] tracking-[0.24em] text-ash uppercase">Editorial</p>

@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { Container } from "@/components/ui/container";
 import { ProductGrid } from "@/components/product/product-grid";
 import { ShopFilters } from "@/components/shop/shop-filters";
-import { isProductCategory, isSortOption, queryCatalogue } from "@/lib/products";
+import { isProductCategory, isSortOption } from "@/lib/products";
+import { queryCatalogue } from "@/lib/catalogue";
 
 export const metadata: Metadata = {
   title: "Shop",
@@ -29,7 +30,7 @@ export default async function ShopPage({ searchParams }: { searchParams: ShopSea
   const sortParam = first(params.sort);
   const query = first(params.q)?.trim();
 
-  const products = queryCatalogue({
+  const products = await queryCatalogue({
     category: isProductCategory(categoryParam) ? categoryParam : undefined,
     sort: isSortOption(sortParam) ? sortParam : "featured",
     query,
