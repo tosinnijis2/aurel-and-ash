@@ -4,13 +4,9 @@ import { defineConfig, env } from "prisma/config";
 /**
  * Prisma configuration.
  *
- * `DATABASE_URL` is the pooled Prisma Postgres connection used by the app at
- * runtime through `@prisma/adapter-pg`.
- *
- * `DIRECT_URL` is the direct Prisma Postgres connection used by Prisma CLI
- * commands that need to talk to the database directly, including migrations,
- * introspection and Studio. Keeping CLI work on the direct URL avoids running
- * migrations through the pooled runtime endpoint.
+ * `DATABASE_URL` is the Prisma Postgres connection used by both the app and
+ * Prisma CLI commands. This mirrors the Sauti setup and keeps local/Vercel
+ * configuration to one required database variable.
  *
  * `SHADOW_DATABASE_URL` is optional and used by exactly one command. See the note
  * on `shadowDatabaseUrl` below.
@@ -23,7 +19,7 @@ export default defineConfig({
     seed: "tsx prisma/seed.ts",
   },
   datasource: {
-    url: env("DIRECT_URL"),
+    url: env("DATABASE_URL"),
 
     /**
      * Only `migrate dev` uses this, and only when it is set.
