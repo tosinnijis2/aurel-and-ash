@@ -9,34 +9,34 @@ TypeScript, Tailwind CSS v4, Prisma and PostgreSQL.
 
 ```bash
 npm install
-cp .env.example .env          # then set DATABASE_URL
+cp .env.example .env          # then set DATABASE_URL and DIRECT_URL
 npm run db:deploy             # create the schema
 npm run db:seed               # load the catalogue
 npm run dev                   # http://localhost:3000
 ```
 
-`DATABASE_URL` must be a direct `postgresql://` connection string. The app
-reaches the database through Prisma's `pg` driver adapter, so a Prisma proxy
-URL will not work. On a hosted provider, use the *pooled* string they issue
-(`?pgbouncer=true&connection_limit=1`) — a serverless function needs it so
-concurrent invocations do not exhaust the database's connection limit.
+`DATABASE_URL` must be the pooled Prisma Postgres URL for application runtime
+queries. It should use the `pooled.db.prisma.io` hostname. `DIRECT_URL` must be
+the direct Prisma Postgres URL for Prisma CLI work such as migrations,
+introspection and Prisma Studio. It should use the `db.prisma.io` hostname.
 
-### A local PostgreSQL
+### The database
 
-No PostgreSQL on the machine? `npm run db:start` launches Prisma's embedded
-Postgres dev server and prints the connection string to paste into `.env`. It
-is real PostgreSQL, not SQLite.
+A hosted Prisma Postgres database. `DATABASE_URL` is the pooled connection used
+by the Next.js app and seed script at runtime. `DIRECT_URL` is the direct
+connection used by Prisma CLI operations. Keep migrations on `DIRECT_URL` so
+`npm run db:deploy` talks to `db.prisma.io` rather than the pooled runtime host.
 
-One caveat worth knowing: that server tolerates only about ten concurrent
-connections and starts terminating the rest, which is well short of what
-`next build` asks for when it renders pages in parallel across workers. Building
-against it wants both of these turned down:
+`npm run db:deploy` (`prisma migrate deploy`) is the migration command for
+production and CI. It applies the committed migrations to the real database and
+nothing else through `DIRECT_URL`. `npm run db:migrate` (`prisma migrate dev`) is for authoring
+migrations during development; it replays them against a throwaway copy of the
+database, which needs a role with CREATE DATABASE. If your provider withholds
+that, set `SHADOW_DATABASE_URL` to a scratch database — see `.env.example`.
+`migrate deploy` never reads `SHADOW_DATABASE_URL`.
 
-```bash
-NEXT_BUILD_CPUS=2 DATABASE_POOL_SIZE=2 npm run build
-```
-
-Drop both once you are on a normal database.
+`db push` is not used anywhere. It bypasses the migration history, so a
+production database could drift from the migrations without anyone noticing.
 
 | Script              | Purpose                                     |
 | ------------------- | ------------------------------------------- |
@@ -45,8 +45,11 @@ Drop both once you are on a normal database.
 | `npm run start`     | Serve the production build                  |
 | `npm run lint`      | ESLint                                      |
 | `npm run typecheck` | `tsc --noEmit`                              |
-| `npm run db:start`  | Start a local Prisma Postgres dev server    |
-| `npm run db:migrate`| Create and apply a migration in development |
+| `npm run test`      | Cart state and rendered-component assertions |
+| `npm run test:cart` | Cart state only (needs `DATABASE_URL`)      |
+| `npm run test:ui`   | Rendered components only, no database       |
+| `npm run test:pages`| Routes and served markup (needs a running server) |
+| `npm run db:migrate`| Author a migration in development           |
 | `npm run db:deploy` | Apply pending migrations (use in CI/production) |
 | `npm run db:seed`   | Load the seed catalogue                     |
 | `npm run db:generate` | Regenerate Prisma Client after a schema edit |
@@ -59,14 +62,63 @@ Drop both once you are on a normal database.
   URL so any view is shareable
 - `/products/[slug]` — gallery, size and quantity selection, inventory status,
   related products
+- `/cart` — the bag: a line per variant, quantity controls, an exact subtotal,
+  and a checkout control that is deliberately inert
 
 ## What is not built yet
 
-The cart, authentication, Stripe checkout, the account area and the admin
-dashboard are deliberately absent. Nothing in the current build pretends to
-accept an order: the newsletter form reports that delivery is not connected
-rather than confirming a signup that did not happen, and `Add to Bag` is disabled
-with the reason shown underneath.
+Authentication, Stripe checkout, orders, the account area, wishlists, promo
+codes, shipping and tax calculations, and the admin dashboard are deliberately
+absent. Nothing in the current build pretends to accept an order: the newsletter
+form reports that delivery is not connected rather than confirming a signup that
+did not happen, and the cart's Checkout button is disabled with the reason shown
+underneath.
+
+## The cart
+
+The bag is a client-side store over `localStorage`. It is small enough that a
+state library would be more machinery than the problem needs, and small enough to
+read in one sitting — `lib/cart.ts` is pure functions over plain data, with no
+React and no browser APIs, and `components/cart/cart-provider.tsx` is the only
+module that touches storage.
+
+**A line is a variant.** `CartLine.variantId` holds the real
+`ProductVariant.id`, the same primary key the catalogue query returned. Two sizes
+of one product are two variants and therefore two lines; adding the same variant
+again increments it rather than duplicating it. There is no second identity
+system, and nothing has to be kept in step with the database's.
+
+**Prices stay exact.** The `Decimal` is converted to integer cents once, in
+`toCents`, at the edge where a row becomes a DTO. Every cart operation —
+`unitPriceInCents * quantity`, and the subtotal that sums those — is integer
+arithmetic, and formatting happens only at render through the existing
+`formatPrice`. No float ever touches a currency value.
+
+**Stock is a UX ceiling, not a reservation.** A line carries the variant's
+quantity as `maxQuantity`, which is what stops the interface from offering more
+than is on hand. It is a snapshot, and the database stays the source of truth:
+checkout must re-read product existence, price, variant and stock on the server
+before taking any money. Nothing in the cart is trusted for that.
+
+**Stored shape.** `localStorage["aurel-and-ash:cart"]` holds
+
+```json
+{ "version": 1, "lines": [ { "variantId": "...", "productId": "...", "slug": "...",
+  "name": "...", "size": "M", "unitPriceInCents": 14800, "quantity": 2,
+  "maxQuantity": 24, "silhouette": "hoodie", "tone": "bone" } ] }
+```
+
+`size` is `null` for a product with no size run — the database's internal `std`
+key is never persisted and never displayed. `parseCart` returns an empty bag for
+anything it does not recognise: malformed JSON, a payload from another version,
+or individual lines with impossible values. A corrupt entry costs you that line,
+not the page.
+
+**Hydration.** `localStorage` is modelled as a React external store and read
+through `useSyncExternalStore`, so the server and the hydration pass agree that
+the bag is empty and the real contents appear one paint later, with no mismatch.
+`useCartHydration()` exposes that boundary so the bag UI holds back a loading
+state instead of flashing an empty bag at someone who has items.
 
 ## Structure
 
@@ -74,29 +126,36 @@ with the reason shown underneath.
 app/
   layout.tsx            fonts, metadata, header and footer shell
   page.tsx              homepage composition
+  cart/page.tsx         the bag route
   shop/page.tsx         catalogue, reads URL search params
   products/[slug]/      product detail, statically generated
   actions/              server actions
   robots.ts sitemap.ts  SEO routes
 components/
   layout/               header, mobile menu, footer, announcement bar
+  cart/                 provider, header link, bag view, line and summary
   ui/                   button, badge, container, section heading, reveal, icons
   home/                 homepage sections
   product/              card, grid, gallery, detail, vector product artwork
   shop/                 filter controls
   marketing/            newsletter
 lib/
+  cart.ts               pure cart state: lines, totals, parsing, storage shape
   products.ts           catalogue types, constants and pure helpers
   catalogue.ts          server-only: the Prisma-backed queries
   prisma.ts             server-only: the shared client, cached across hot reloads
   db.ts                 client construction, shared with the seed script
   format.ts             currency formatting
   forms.ts              shared form state shapes
+scripts/
+  verify-cart.mts       cart state assertions, against real variant ids
+  verify-cart-ui.tsx    rendered-component assertions
+  verify-cart-pages.mts routes and served markup
 prisma/
   schema.prisma         Product, ProductVariant, ProductImage
   seed.ts               idempotent catalogue seed
   migrations/           generated SQL, applied by db:migrate / db:deploy
-middleware.ts           redirects case-variant product slugs to their canonical form
+proxy.ts                redirects case-variant product slugs to their canonical form
 ```
 
 ## Data
@@ -124,7 +183,9 @@ row. Its variant stores the key `std` rather than a size, and because that key
 is never null, `(productId, sizeKey)` can carry a genuine unique constraint
 (Postgres treats NULLs as distinct from one another, so a nullable size could
 not). The storefront recognises a single-variant product and renders no size
-selector at all, so no invented "One Size" is ever shown to a customer.
+selector at all, so no invented "One Size" is ever shown to a customer, and the
+key itself never leaves the database — a cart line for one of these stores
+`"size": null`.
 
 ### Rendering
 
@@ -132,7 +193,8 @@ selector at all, so no invented "One Size" is ever shown to a customer.
 keeps stock counts close to correct while still serving HTML rather than waiting
 on a query. The homepage revalidates every five minutes. `/shop` is dynamic
 because its filtering lives in the URL. Both mean `DATABASE_URL` must be
-reachable at build time.
+reachable at build time. `/cart` is static: the bag lives in the customer's
+browser, so there is nothing for the server to render or query.
 
 Prerendering has one sharp edge worth recording, because it is invisible on a
 case-sensitive filesystem and quietly destructive on a case-insensitive one. A
@@ -141,7 +203,7 @@ build writes one artifact per slug, so on Windows a request for
 `essential-tee.html` and is answered with the product and a 200 — the slug guard
 in `lib/catalogue.ts` never runs, and the not-found render that follows
 overwrites the cached page for the real slug, which then 404s until the build is
-discarded. `middleware.ts` closes that gap by redirecting any case variant to
+discarded. `proxy.ts` closes that gap by redirecting any case variant to
 its canonical lowercase form before routing, so a variant can never reach a
 prerendered artifact. Slugs that differ by more than case have no artifact to
 collide with and 404 through `notFound()` as normal.
@@ -173,3 +235,4 @@ low-chroma — ink, ash, stone, sand, bone — with brass as the only accent and
 reserved for validation errors. Motion uses a single easing curve and respects
 `prefers-reduced-motion`. Scroll reveals are gated behind a `js` class set before
 first paint, so content stays visible when scripting is unavailable.
+# aurel-and-ash
